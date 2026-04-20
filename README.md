@@ -1,109 +1,202 @@
-# Data Science Project Boilerplate
+# Clasificador de Calidad de Vinos con KNN
 
-This boilerplate is designed to kickstart data science projects by providing a basic setup for database connections, data processing, and machine learning model development. It includes a structured folder organization for your datasets and a set of pre-defined Python packages necessary for most data science tasks.
+Este proyecto desarrolla un modelo de Machine Learning capaz de clasificar la calidad de vinos tintos a partir de sus características químicas. Para ello se utiliza el algoritmo K-Vecinos más Cercanos, conocido como KNN, uno de los modelos supervisados más intuitivos para tareas de clasificación.
 
-## Structure
+El objetivo es analizar si, a partir de variables como la acidez, el nivel de alcohol, los sulfatos, el pH o la densidad, es posible predecir si un vino pertenece a una categoría de baja, media o alta calidad.
 
-The project is organized as follows:
+## Objetivo del Proyecto
 
-- **`src/app.py`** → Main Python script where your project will run.
-- **`src/explore.ipynb`** → Notebook for exploration and testing. Once exploration is complete, migrate the clean code to `app.py`.
-- **`src/utils.py`** → Auxiliary functions, such as database connection.
-- **`requirements.txt`** → List of required Python packages.
-- **`models/`** → Will contain your SQLAlchemy model classes.
-- **`data/`** → Stores datasets at different stages:
-  - **`data/raw/`** → Raw data.
-  - **`data/interim/`** → Temporarily transformed data.
-  - **`data/processed/`** → Data ready for analysis.
+El propósito principal de este proyecto es entrenar, evaluar y optimizar un modelo KNN para predecir la calidad de un vino tinto utilizando datos reales del Wine Quality Data Set del UCI Machine Learning Repository.
 
+La variable objetivo se representa como `label`:
 
-## ⚡ Initial Setup in Codespaces (Recommended)
+| Label | Categoría |
+| --- | --- |
+| `0` | Baja calidad |
+| `1` | Calidad media |
+| `2` | Alta calidad |
 
-No manual setup is required, as **Codespaces is automatically configured** with the predefined files created by the academy for you. Just follow these steps:
+El dataset original contiene la variable `quality`, que fue transformada en tres clases para facilitar el problema de clasificación:
 
-1. **Wait for the environment to configure automatically**.
-   - All necessary packages and the database will install themselves.
-   - The automatically created `username` and `db_name` are in the **`.env`** file at the root of the project.
-2. **Once Codespaces is ready, you can start working immediately**.
+- Calidad baja: vinos con `quality <= 4`.
+- Calidad media: vinos con `quality` entre `5` y `6`.
+- Calidad alta: vinos con `quality >= 7`.
 
+## Dataset
 
-## 💻 Local Setup (Only if you can't use Codespaces)
+El conjunto de datos contiene mediciones fisicoquímicas de vinos tintos. Cada fila representa un vino y cada columna describe una característica química.
 
-**Prerequisites**
+Variables utilizadas:
 
-Make sure you have Python 3.11+ installed on your machine. You will also need pip to install the Python packages.
+| Variable | Descripción |
+| --- | --- |
+| `fixed acidity` | Acidez fija del vino |
+| `volatile acidity` | Acidez volátil |
+| `citric acid` | Cantidad de ácido cítrico |
+| `residual sugar` | Azúcar residual |
+| `chlorides` | Nivel de cloruros |
+| `free sulfur dioxide` | Dióxido de azufre libre |
+| `total sulfur dioxide` | Dióxido de azufre total |
+| `density` | Densidad del vino |
+| `pH` | Nivel de pH |
+| `sulphates` | Sulfatos |
+| `alcohol` | Porcentaje de alcohol |
 
-**Installation**
+## Metodología
 
-Clone the project repository to your local machine.
+El flujo de trabajo seguido en el proyecto fue el siguiente:
 
-Navigate to the project directory and install the required Python packages:
+1. Carga del dataset con Pandas.
+2. Exploración inicial de la estructura de los datos.
+3. Revisión de tipos de datos, valores nulos y duplicados.
+4. Transformación de la variable `quality` en la variable objetivo `label`.
+5. Análisis visual de la distribución de clases.
+6. Exploración de variables químicas relevantes.
+7. Separación entre variables predictoras y variable objetivo.
+8. División del dataset en entrenamiento y prueba.
+9. Escalado de variables con `StandardScaler`.
+10. Entrenamiento de un modelo KNN inicial.
+11. Evaluación mediante:
+   - `accuracy_score`
+   - `confusion_matrix`
+   - `classification_report`
+12. Optimización del valor de `k` probando valores entre 1 y 20.
+13. Visualización de la relación entre accuracy y `k`.
+14. Comparación con modelos de referencia.
+15. Guardado del modelo final.
+16. Creación de una función para predecir la calidad de nuevos vinos.
+
+## ¿Por qué es necesario escalar los datos?
+
+KNN clasifica una observación según la distancia con sus vecinos más cercanos. Por esta razón, las variables deben estar en una escala comparable.
+
+Por ejemplo, variables como `total sulfur dioxide` pueden tener valores mucho mayores que variables como `chlorides` o `density`. Si no se escalan los datos, las variables con mayor rango numérico pueden dominar el cálculo de distancia y afectar negativamente el rendimiento del modelo.
+
+Para evitarlo, se utilizó `StandardScaler`.
+
+## Resultados del Modelo
+
+Se probaron distintos valores de `k` entre 1 y 20. El mejor valor encontrado para KNN uniforme fue:
+
+```text
+k = 19
+```
+
+Además, se evaluó una variante de KNN con ponderación por distancia, donde los vecinos más cercanos tienen más influencia que los más alejados.
+
+Resultados principales:
+
+| Modelo | Accuracy | Precision weighted | Recall weighted | F1 weighted | F1 macro |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| KNN k=19 distance | 0.8566 | 0.8093 | 0.8566 | 0.8239 | 0.4898 |
+| KNN k=19 | 0.8529 | 0.8063 | 0.8529 | 0.8168 | 0.4750 |
+| RandomForest | 0.8346 | 0.7821 | 0.8346 | 0.8037 | 0.4626 |
+| SVC RBF | 0.6912 | 0.8364 | 0.6912 | 0.7290 | 0.5581 |
+
+El mejor resultado por accuracy fue obtenido por `KNN k=19 distance`, alcanzando una precisión aproximada del 85.66%.
+
+## Función de Predicción
+
+El proyecto incluye una función que permite introducir las características químicas de un vino y obtener una predicción de su calidad.
+
+Ejemplo:
+
+```python
+predict_wine_quality([
+    7.4, 0.7, 0.0, 1.9, 0.076,
+    11.0, 34.0, 0.9978, 3.51, 0.56, 9.4
+])
+```
+
+Resultado:
+
+```text
+Este vino probablemente sea de calidad media 🍷
+```
+
+## Estructura del Proyecto
+
+```text
+Dragcessa1998-Proyecto-K-vecinos-m-s-Cercanos-main/
+│
+├── data/
+│   ├── raw/
+│   │   └── winequality-red.csv
+│   ├── processed/
+│   │   ├── winequality_red_labeled.csv
+│   │   ├── knn_k_results.csv
+│   │   └── model_results.csv
+│   └── interim/
+│
+├── models/
+│   ├── wine_quality_knn.pkl
+│   └── wine_quality_best_model.pkl
+│
+├── src/
+│   ├── app.py
+│   ├── explore.ipynb
+│   └── utils.py
+│
+├── requirements.txt
+├── README.md
+└── README.es.md
+```
+
+## Archivos Principales
+
+| Archivo | Descripción |
+| --- | --- |
+| `src/explore.ipynb` | Notebook con el análisis completo, visualizaciones, entrenamiento y evaluación |
+| `src/app.py` | Script reproducible para entrenar el modelo y guardar resultados |
+| `data/raw/winequality-red.csv` | Dataset original |
+| `data/processed/winequality_red_labeled.csv` | Dataset procesado con la variable objetivo |
+| `data/processed/knn_k_results.csv` | Resultados de accuracy y métricas para cada valor de `k` |
+| `data/processed/model_results.csv` | Comparación entre modelos |
+| `models/wine_quality_knn.pkl` | Modelo KNN final |
+| `models/wine_quality_best_model.pkl` | Mejor modelo global |
+
+## Cómo Ejecutar el Proyecto
+
+Instalar las dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**Create a database (if necessary)**
-
-Create a new database within the Postgres engine by customizing and executing the following command:
-
-```bash
-$ psql -U postgres -c "DO \$\$ BEGIN 
-    CREATE USER my_user WITH PASSWORD 'my_password'; 
-    CREATE DATABASE my_database OWNER my_user; 
-END \$\$;"
-```
-Connect to the Postgres engine to use your database, manipulate tables, and data:
-
-```bash
-$ psql -U my_user -d my_database
-```
-
-Once inside PSQL, you can create tables, run queries, insert, update, or delete data, and much more!
-
-**Environment Variables**
-
-Create a .env file in the root directory of the project to store your environment variables, such as your database connection string:
-
-```makefile
-DATABASE_URL="postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DB_NAME>"
-
-#example
-DATABASE_URL="postgresql://my_user:my_password@localhost:5432/my_database"
-```
-
-## Running the Application
-
-To run the application, execute the app.py script from the root directory of the project:
+Ejecutar el script principal:
 
 ```bash
 python src/app.py
 ```
 
-## Adding Models
+También se puede abrir y ejecutar el notebook:
 
-To add SQLAlchemy model classes, create new Python script files within the models/ directory. These classes should be defined according to your database schema.
-
-Example model definition (`models/example_model.py`):
-
-```py
-from sqlalchemy.orm import declarative_base
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
-
-Base = declarative_base()
-
-class ExampleModel(Base):
-    __tablename__ = 'example_table'
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(unique=True)
+```text
+src/explore.ipynb
 ```
 
-## Working with Data
+## Insight del Proyecto
 
-You can place your raw datasets in the data/raw directory, intermediate datasets in data/interim, and processed datasets ready for analysis in data/processed.
+A partir de variables químicas como el alcohol, la acidez volátil, los sulfatos y la densidad, un modelo de Machine Learning puede aproximar la calidad de un vino tinto con una precisión cercana al 86%.
 
-To process data, you can modify the app.py script to include your data processing steps, using pandas for data manipulation and analysis.
+Esto demuestra cómo la inteligencia artificial puede apoyar tareas de clasificación que tradicionalmente dependerían de evaluación experta, aunque el modelo también revela una limitación importante: las clases minoritarias, como vinos de baja calidad, son más difíciles de predecir cuando hay pocos ejemplos disponibles.
+
+## Tecnologías Utilizadas
+
+- Python
+- Pandas
+- Matplotlib
+- Seaborn
+- Scikit-learn
+- Jupyter Notebook
+- Pickle
+
+## Conclusión
+
+El modelo KNN demostró ser una alternativa efectiva para clasificar vinos tintos según su composición química. La optimización del valor de `k` permitió mejorar el rendimiento, y la variante con ponderación por distancia obtuvo el mejor resultado general.
+
+El proyecto también evidencia la importancia del escalado de variables en algoritmos basados en distancia y la necesidad de revisar métricas más allá del accuracy cuando las clases están desbalanceadas.
+
 
 ## Contributors
 
